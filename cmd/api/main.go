@@ -1,14 +1,22 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/Amir-Zouerami/EWG-simple-API-server/internal/env"
+	"github.com/Amir-Zouerami/EWG-simple-API-server/internal/store"
+)
 
 func main() {
 	cfg := config{
-		addr: ":8000",
+		addr: env.GetString("ADDR", ":8080"),
 	}
+
+	store := store.NewStorage(nil)
 
 	app := &application{
 		config: cfg,
+		store:  store,
 	}
 
 	mux := app.mount()

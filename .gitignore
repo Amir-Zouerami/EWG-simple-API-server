@@ -28,4 +28,4 @@ go.work.sum
 .vscode
 
 #go builds
-bin
+bin/

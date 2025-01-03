@@ -13,13 +13,14 @@ type PostStore struct {
 }
 
 type Post struct {
-	ID        int64    `json:"id"`
-	Title     string   `json:"title"`
-	UserID    int64    `json:"user_id"`
-	Content   string   `json:"content"`
-	Tags      []string `json:"tags"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	ID        int64     `json:"id"`
+	Title     string    `json:"title"`
+	UserID    int64     `json:"user_id"`
+	Content   string    `json:"content"`
+	Comments  []Comment `json:"comments"`
+	Tags      []string  `json:"tags"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
 }
 
 func (ps *PostStore) Create(ctx context.Context, post *Post) error {
@@ -75,4 +76,42 @@ func (ps *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 	}
 
 	return &post, nil
+}
+
+func (ps *PostStore) DeleteByID(ctx context.Context, postID int64) error {
+	query := `DELETE FROM posts WHERE id = $1`
+
+	res, err := ps.db.ExecContext(ctx, query, postID)
+
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (ps *PostStore) UpdateByID(ctx context.Context, post *Post) error {
+	query := `
+	UPDATE posts
+	SET title = $1, content= $2
+	WHERE id = $3
+	`
+
+	_, err := ps.db.ExecContext(ctx, query, post.Title, post.Content, post.ID)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

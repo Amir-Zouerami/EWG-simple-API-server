@@ -19,6 +19,7 @@ type Post struct {
 	Content   string    `json:"content"`
 	Comments  []Comment `json:"comments"`
 	Tags      []string  `json:"tags"`
+	Version   int       `json:"version"`
 	CreatedAt string    `json:"created_at"`
 	UpdatedAt string    `json:"updated_at"`
 }
@@ -50,7 +51,7 @@ func (ps *PostStore) Create(ctx context.Context, post *Post) error {
 
 func (ps *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 	query := `
-		SELECT id, user_id, title, content, created_at, updated_at, tags
+		SELECT id, user_id, title, content, version, created_at, updated_at, tags
 		FROM posts WHERE id = $1 LIMIT 1;
 	`
 
@@ -61,6 +62,7 @@ func (ps *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 		&post.UserID,
 		&post.Title,
 		&post.Content,
+		&post.Version,
 		&post.CreatedAt,
 		&post.UpdatedAt,
 		pq.Array(&post.Tags),
@@ -103,14 +105,19 @@ func (ps *PostStore) DeleteByID(ctx context.Context, postID int64) error {
 func (ps *PostStore) UpdateByID(ctx context.Context, post *Post) error {
 	query := `
 	UPDATE posts
-	SET title = $1, content= $2
-	WHERE id = $3
+	SET title = $1, content = $2, version = version + 1
+	WHERE id = $3 AND version = $4
+	RETURNING version
 	`
-
-	_, err := ps.db.ExecContext(ctx, query, post.Title, post.Content, post.ID)
+	err := ps.db.QueryRowContext(ctx, query, post.Title, post.Content, post.ID, post.Version).Scan(&post.Version)
 
 	if err != nil {
-		return err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrNotFound
+		default:
+			return err
+		}
 	}
 
 	return nil

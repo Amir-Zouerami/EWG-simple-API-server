@@ -14,6 +14,7 @@ type PostStore struct {
 
 type Post struct {
 	ID        int64     `json:"id"`
+	User      User      `json:"user"`
 	Title     string    `json:"title"`
 	UserID    int64     `json:"user_id"`
 	Content   string    `json:"content"`
@@ -22,6 +23,11 @@ type Post struct {
 	Version   int       `json:"version"`
 	CreatedAt string    `json:"created_at"`
 	UpdatedAt string    `json:"updated_at"`
+}
+
+type FeedRecord struct {
+	Post
+	CommentsCount int `json:"comments_count"`
 }
 
 func (ps *PostStore) Create(ctx context.Context, post *Post) error {
@@ -134,4 +140,71 @@ func (ps *PostStore) UpdateByID(ctx context.Context, post *Post) error {
 	}
 
 	return nil
+}
+
+func (ps *PostStore) GetUserFeed(ctx context.Context, userID int64, fq FeedPaginationQuery) ([]*FeedRecord, error) {
+	query := `
+	SELECT
+	p.id,
+	p.user_id,
+	p.title,
+	p.content,
+	p.created_at,
+	p.version,
+	p.tags,
+	u.username,
+	COALESCE(comment_counts.comment_count, 0) AS comment_count
+	FROM
+	posts p
+	LEFT JOIN (
+		SELECT post_id, COUNT(*) AS comment_count
+		FROM comments
+		GROUP BY post_id
+	) comment_counts ON p.id = comment_counts.post_id
+	LEFT JOIN users u ON p.user_id = u.id
+	WHERE
+	p.user_id = $1
+	OR p.user_id IN (
+		SELECT f.follower_id
+		FROM followers f
+		WHERE f.user_id = $1
+	)
+	ORDER BY p.created_at ` + fq.Sort + ` LIMIT $2 OFFSET $3
+	`
+	ctx, cancel := context.WithTimeout(ctx, QUERY_TIMEOUT_DURATION)
+	defer cancel()
+
+	rows, err := ps.db.QueryContext(ctx, query, userID, fq.Limit, fq.Offset)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var feedRecords []*FeedRecord
+
+	for rows.Next() {
+		var record FeedRecord
+
+		err := rows.Scan(
+			&record.ID,
+			&record.UserID,
+			&record.Title,
+			&record.Content,
+			&record.CreatedAt,
+			&record.Version,
+			pq.Array(&record.Tags),
+			&record.User.Username,
+			&record.CommentsCount,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		feedRecords = append(feedRecords, &record)
+	}
+
+	return feedRecords, nil
 }

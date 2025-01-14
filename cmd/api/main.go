@@ -1,11 +1,10 @@
 package main
 
 import (
-	"log"
-
 	"github.com/Amir-Zouerami/EWG-simple-API-server/internal/db"
 	"github.com/Amir-Zouerami/EWG-simple-API-server/internal/env"
 	"github.com/Amir-Zouerami/EWG-simple-API-server/internal/store"
+	"go.uber.org/zap"
 )
 
 //	@title			Learning Go and its ecosystem
@@ -39,6 +38,11 @@ func main() {
 		},
 	}
 
+	// Logger
+	logger := zap.Must(zap.NewProduction()).Sugar()
+	defer logger.Sync()
+
+	// Database
 	db, err := db.New(
 		cfg.db.addr,
 		cfg.db.maxOpenConns,
@@ -47,20 +51,21 @@ func main() {
 	)
 
 	if err != nil {
-		log.Panic(err)
+		logger.Fatal(err)
 	}
 
 	defer db.Close()
-	log.Println("db connection pool established")
+	logger.Info("db connection pool established")
 
 	store := store.NewStorage(db)
 
 	app := &application{
 		config: cfg,
 		store:  store,
+		logger: logger,
 	}
 
 	mux := app.mount()
 
-	log.Fatal(app.run(mux))
+	logger.Fatal(app.run(mux))
 }

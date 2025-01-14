@@ -8,9 +8,27 @@ import (
 	"github.com/Amir-Zouerami/EWG-simple-API-server/internal/store"
 )
 
+//	@title			Learning Go and its ecosystem
+//	@version		1.0
+//	@description	This is me trying to learn Go and it's ecosystem.
+//	@termsOfService	http://swagger.io/terms/
+
+//	@contact.name	API Support
+//	@contact.url	http://www.swagger.io/support
+//	@contact.email	support@swagger.io
+
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @BasePath					/v1
+// @securityDefinitions.apikey	ApiKeyAuth
+// @in							header
+// @name						Authorization
+// @description
 func main() {
 	cfg := config{
 		addr:    env.GetString("ADDR", ":8080"),
+		apiURL:  env.GetString("EXTERNAL_URL", "localhost:8080"),
 		env:     env.GetString("APP_MODE", ""),
 		version: env.GetString("APP_VERSION", ""),
 		db: dbConfig{

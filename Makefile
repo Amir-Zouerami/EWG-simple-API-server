@@ -16,3 +16,7 @@ migrate-down:
 .PHONY: migrate-fix
 migrate-fix:
 	@migrate -path=$(MIGRATION_PATH) -database=$(DB_ADDR) force $(filter-out $@,$(MAKECMDGOALS))
+
+.PHONY: gen-docs
+gen-docs:
+	@swag init -g ./api/main.go -d cmd,internal && swag fmt
